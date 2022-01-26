@@ -2,7 +2,6 @@ import pandas as pd
 
 
 def main():
-    print("hello world")
     df = pd.DataFrame()
     print(df)
 
