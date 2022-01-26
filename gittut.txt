@@ -29,3 +29,7 @@ Make Fetch
 
 Make Pull
 - git pull, update to latest branch changes
+
+Branches
+- git branch 'new name', 
+- git checkout 'new name', to switch which branch you are on, should show a '*'
