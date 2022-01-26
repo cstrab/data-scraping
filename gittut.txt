@@ -1,0 +1,31 @@
+Steps:
+- cd into 'repo'
+
+Commands:
+New Repository
+- cd into GitHub
+- git clone 'url' 
+
+Make Changes
+- cd into 'repo'
+- git add .
+or to add specific files
+- git add ./scraper.py
+or 
+- git add scraper.py
+
+Make Commit
+- cd into 'repo' 
+- git status, make sure correct files are staged
+- git commit -m "insert commit msg"
+
+Make Push
+- cd into 'repo'
+- git status, will say ahead of origin branch by 'x' commits
+- git push
+
+Make Fetch
+- git fetch, pings repository for updates
+
+Make Pull
+- git pull, update to latest branch changes
