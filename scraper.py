@@ -6,6 +6,7 @@ import config as cfg
 
 
 ACCESS_ENDPOINT = "https://www.reddit.com/api/v1/access_token"
+OAUTH_ENDPOINT = "https://oauth.reddit.com"
 SUBREDDITS=[
     "nfl",
     "buffalobills",
@@ -13,7 +14,7 @@ SUBREDDITS=[
 ]
 
 def get_top_posts(headers: dict, subreddit: str):
-    API_ENDPOINT = f"https://oauth.reddit.com/r/{subreddit}/top/.json"
+    API_ENDPOINT = f"{OAUTH_ENDPOINT}/r/{subreddit}/top/.json"
     params = {"count": 10}
     api_response = requests.get(
         API_ENDPOINT,
