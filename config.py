@@ -1,4 +1,8 @@
 import os
+from dotenv import load_dotenv
+
+
+load_dotenv() # Loads variables from .env file into environment
 
 NAME="big.data.boys"
 REDDIT_USERNAME="cheeebz"
