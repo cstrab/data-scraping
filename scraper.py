@@ -2,7 +2,6 @@ import time
 import requests
 import json
 import pandas as pd
-import urllib
 
 import config as cfg
 import utils
@@ -94,7 +93,7 @@ class RedditScraper:
         api_response_data = api_response.json()
 
         if self.dump_json:
-            with open(f"{api_response.url}.json", "w") as outfile:
+            with open(f"{api_response.url.replace('/', '|')}.json", "w") as outfile:
                 json.dump(api_response_data, outfile, indent=4)
         
         return api_response_data
@@ -121,8 +120,12 @@ class RedditScraper:
         endpoint = f"{OAUTH_ENDPOINT}/r/{subreddit}/{sort}/.json"
         params = {"limit": limit}
         api_response_data = self.get_json(endpoint, params)
+        posts_df = self.parse_posts(api_response_data)
+        return posts_df
 
-        posts = api_response_data["data"]["children"]
+
+    def parse_posts(self, response_json: dict):
+        posts = response_json["data"]["children"]
         data = []
         for post in posts:
             post_kind = post["kind"]
@@ -134,6 +137,81 @@ class RedditScraper:
         return df
 
 
+    # Follows a subreddit by polling for new posts. Saves posts to data store.
+    def follow_subreddit(self, subreddit: str, limit = 100, pollrate = 5):
+        endpoint = f"{OAUTH_ENDPOINT}/r/{subreddit}/new/.json"
+        params = {"limit": limit}
+        while True:
+            api_response_data = self.get_json(endpoint, params)
+            posts_df = self.parse_posts(api_response_data)
+            if not posts_df.empty:
+                self.save_posts(posts_df)
+                last_post = posts_df.iloc[0]
+                before = f"{last_post['kind']}_{last_post['id']}"
+                params["before"] = before
+            else:
+                print(f"No new posts in {subreddit}. Waiting {pollrate} seconds...")
+                time.sleep(pollrate)
+
+
+    def save_posts(self, posts_df: pd.DataFrame):
+        # TODO: Save posts to a db
+        print("Saving posts...")
+        print(posts_df)
+
+
+    def follow_subreddit_hot(self, subreddit: str, limit = 10, pollrate = 5):
+        endpoint = f"{OAUTH_ENDPOINT}/r/{subreddit}/hot/.json"
+        params = {"limit": limit}
+        posts_df: pd.DataFrame = pd.DataFrame()
+        comment_tails = {}
+        while True:
+            # TODO: Refactor the next 10 lines
+            api_response_data = self.get_json(endpoint, params)
+            new_posts_df = self.parse_posts(api_response_data)
+            if not new_posts_df.empty:
+                self.save_posts(new_posts_df)
+                last_post = new_posts_df.iloc[0]
+                before = f"{last_post['kind']}_{last_post['id']}"
+                params["before"] = before
+            else:
+                print(f"No new hot posts in {subreddit}. Waiting {pollrate} seconds...")
+                time.sleep(pollrate)
+
+            posts_df = pd.concat([new_posts_df, posts_df], sort=False).head(10)
+            comment_heads = {}
+            for _, post in posts_df.iterrows():
+                post_id = post['id']
+                if post_id in comment_tails:
+                    comment_heads[post_id] = comment_tails[post_id]
+                else:
+                    print(f"New hot post {post_id} in {subreddit}.")
+                    comment_heads[post_id] = ""
+            
+            # TODO: Need to figure out how to get new comments only
+            # for post_id, before in comment_heads.items():
+            #     while True:
+            #         # Get comments and store the before value
+            #         comments_df = self.get_post_comments(subreddit, post_id, sort="new", limit=100)
+            #         if not comments_df.empty:
+            #             self.save_comments(comments_df)
+            #             last_comment = comments_df.iloc[0]
+            #             before = f"{last_comment['kind']}_{last_comment['id']}"
+            #             comment_heads[post_id] = before
+            #         else:
+            #             print(f"No new comments in {subreddit} post {post_id}.")
+            #             break
+
+            comment_tails = comment_heads
+
+
+    def save_comments(self, comments_df: pd.DataFrame):
+        # TODO: Save comments to a db
+        print("Saving comments...")
+        print(comments_df)
+
+
+    # TODO: May need to return more than just a df of comments (before, after, etc.)
     def get_post_comments(self, subreddit: str, post_id: str, sort = "top", limit = 10):
         endpoint = f"{OAUTH_ENDPOINT}/r/{subreddit}/comments/{post_id}/.json"
         params = {
@@ -141,19 +219,24 @@ class RedditScraper:
             "limit": limit,
             "showmore": False
         }
-        api_response_data = self.get_json(endpoint, params)
 
-        # post = api_response_data[0]
-        comments_obj = api_response_data[1] # is there a cleaner way to get this?
+        api_response_data = self.get_json(endpoint, params)
+        comments_df = self.parse_comments(api_response_data)
+        comments_df['post_id'] = post_id
+        return comments_df
+        
+    
+    def parse_comments(self, response_json: dict):
+        comments_obj = response_json[1] # is there a cleaner way to get this?
         comments = comments_obj["data"]["children"]
         data = []
         for comment in comments:
             comment_kind = comment["kind"]
             comment_data = comment["data"]
             values = [comment_data[column] for column in COMMENT_COLUMNS]
-            data.append([post_id, comment_kind, *values])
+            data.append([comment_kind, *values])
 
-        df = pd.DataFrame(data, columns=["post_id", "kind", *COMMENT_COLUMNS])
+        df = pd.DataFrame(data, columns=["kind", *COMMENT_COLUMNS])
         return df
 
 
@@ -167,19 +250,8 @@ def main():
         dump_json = cfg.DUMP_JSON
     )
     
+    scraper.follow_subreddit_hot(SUBREDDITS[0])
     # TODO: Check out live threads: https://www.reddit.com/dev/api/#section_live
-
-    # Uncomment to run indefinitely
-    # while True:
-    for subreddit in SUBREDDITS:
-        top_posts_df = scraper.get_posts(subreddit, sort="top", limit=POST_LIMIT)
-        if not top_posts_df.empty:
-            top_comments_dfs = []
-            for _, row in top_posts_df.iterrows():
-                top_comments_df = scraper.get_post_comments(subreddit, row["id"], sort="top", limit=COMMENT_LIMIT)
-                top_comments_dfs.append(top_comments_df)
-            
-            all_top_comments_df = pd.concat(top_comments_dfs, sort=False)
 
 
 if __name__ == "__main__":
