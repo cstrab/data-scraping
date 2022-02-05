@@ -2,6 +2,7 @@ import time
 import requests
 import json
 import pandas as pd
+import praw
 
 import config as cfg
 import utils
@@ -188,7 +189,7 @@ class RedditScraper:
                     print(f"New hot post {post_id} in {subreddit}.")
                     comment_heads[post_id] = ""
             
-            # TODO: Need to figure out how to get new comments only
+            # TODO: Need to figure out how to get new comments only, seems 'before' is not a thing here??
             # for post_id, before in comment_heads.items():
             #     while True:
             #         # Get comments and store the before value
@@ -242,16 +243,14 @@ class RedditScraper:
 
 def main():
     user_agent = f"script:{cfg.NAME}:{cfg.VERSION} (by /u/{cfg.REDDIT_USERNAME})" # <platform>:<app ID>:<version string> (by /u/<reddit username>)
-    scraper = RedditScraper(
+    reddit = praw.Reddit(
         client_id=cfg.CLIENT_ID, 
         client_secret = cfg.CLIENT_SECRET,
         user_agent = user_agent,
-        debug = cfg.DEBUG,
-        dump_json = cfg.DUMP_JSON
     )
     
-    scraper.follow_subreddit_hot(SUBREDDITS[0])
-    # TODO: Check out live threads: https://www.reddit.com/dev/api/#section_live
+    top_posts = reddit.subreddit(SUBREDDITS[0]).top(limit=POST_LIMIT)
+    print(top_posts)
 
 
 if __name__ == "__main__":
