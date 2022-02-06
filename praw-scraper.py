@@ -159,7 +159,7 @@ def main() -> None:
         except Exception as exp:
             print(f"Error streaming comments: {exp}")
             print(f"Retrying in {cfg.RETRY_SECONDS} seconds...")
-            time.sleep()
+            time.sleep(cfg.RETRY_SECONDS)
 
 
 if __name__ == "__main__":
