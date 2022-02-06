@@ -1,6 +1,12 @@
-venv/
+# Cache
 __pycache__/
 
+# Virtualenv
+venv/
+
+# Environment Configuration
 *.env
 
+# Output Files
 *.json
+*.out
