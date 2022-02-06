@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 
 load_dotenv() # Loads variables from .env file into environment
 
-DEBUG=True
+DEBUG=False
 NAME="big.data.boys"
 VERSION="0.0.1"
 REDDIT_USERNAME="cheeebz"
