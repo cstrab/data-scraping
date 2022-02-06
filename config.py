@@ -11,6 +11,7 @@ REDDIT_USERNAME="cheeebz"
 CLIENT_ID="QpA5EiFQsqYoj2nbkqrObQ"
 CLIENT_SECRET=os.environ.get("CLIENT_SECRET")
 SUBREDDIT="wallstreetbets"
+RETRY_SECONDS=30
 # DUMP_JSON=False
 
 DATABASE_HOST=os.environ.get("DATABASE_HOST")

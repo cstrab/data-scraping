@@ -1,5 +1,6 @@
 import praw
 import psycopg2
+import time
 
 import config as cfg
 
@@ -151,7 +152,14 @@ def main() -> None:
         database_user = cfg.DATABASE_USER,
         database_password = cfg.DATABASE_PASSWORD
     )
-    scraper.stream_comments()
+
+    while True:
+        try:
+            scraper.stream_comments()
+        except Exception as exp:
+            print(f"Error streaming comments: {exp}")
+            print(f"Retrying in {cfg.RETRY_SECONDS} seconds...")
+            time.sleep()
 
 
 if __name__ == "__main__":

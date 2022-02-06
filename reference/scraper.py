@@ -5,7 +5,7 @@ import pandas as pd
 import praw
 
 import config as cfg
-import utils
+import reference.utils as utils
 
 
 ACCESS_ENDPOINT = "https://www.reddit.com/api/v1/access_token"
