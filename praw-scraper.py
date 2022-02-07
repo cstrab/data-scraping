@@ -1,8 +1,10 @@
 import praw
 import psycopg2
 import time
+from pandas_datareader import data as pdr
 
 import config as cfg
+import nlp
 
 
 class RedditScraper:
@@ -12,13 +14,14 @@ class RedditScraper:
     connection = None
     cursor = None
     debug: bool
+    symbols = []
 
     def __init__(
         self,
-        client_id,
-        client_secret,
-        user_agent,
-        subreddit,
+        client_id: str,
+        client_secret: str,
+        user_agent: str,
+        subreddit: str,
         debug = False,
         database_host = "",
         database_port = 5432,
@@ -47,7 +50,32 @@ class RedditScraper:
             print("No database config provided. Results will not be saved.")
 
         self.debug = debug
+
+
+    def get_symbols(self):
+        if self.debug:
+            print("Getting symbols...")
+
+        if not self.connection:
+            return self.fetch_symbols()
+        
+        try:
+            symbols = []
+            # sql = "SELECT symbol FROM symbols;"
+            sql = """SELECT * FROM public.symbols WHERE LENGTH(symbol) > 2
+            AND listing_exchange IN ('Q', 'N')"""
+            self.cursor.execute(sql)
+            results = self.cursor.fetchall()
+            symbols = {result[0]: True for result in results}
+            self.symbols = symbols
+        except Exception as exp:
+            print(f"Error getting symbols: {exp}")
     
+
+    def fetch_symbols(self):
+        symbols = pdr.get_nasdaq_symbols()
+        self.symbols = {symbol: True for symbol, _ in symbols.iterrows()}
+
 
     def submission_exists(self, submission: praw.reddit.Submission) -> bool:
         if not self.connection:
@@ -104,9 +132,14 @@ class RedditScraper:
     def save_comment(self, comment: praw.reddit.Comment) -> None:
         if self.debug:
             print(f"Saving comment on submission {comment.submission.id}...")
+       
+        self.insert_comment(comment)
+        self.analyze_comment(comment)
 
+
+    def insert_comment(self, comment: praw.reddit.Comment) -> None:
         if not self.connection:
-            return False
+            return
         
         try:
             sql = """INSERT INTO comments (id, submission_id, body, author, created) 
@@ -121,7 +154,51 @@ class RedditScraper:
             self.connection.commit()
         except Exception as exp:
             self.connection.rollback()
-            print(f"Error saving comment {comment.id}: {exp}")
+            print(f"Error inserting comment {comment.id}: {exp}")
+
+        
+    def analyze_comment(self, comment: praw.reddit.Comment):
+        sentiments = self.get_sentiments(comment)
+        if self.debug:
+            for symbol in sentiments:
+                print(f"{symbol} mentioned in {comment.id} with sentiment {sentiments[symbol]['sentiment']}.")
+        
+        if not self.connection:
+            return
+        
+        try:
+            sql = """INSERT INTO mentions (symbol, comment_id, sentiment) 
+            VALUES (%s, %s, %s);"""
+            for symbol in sentiments:
+                self.cursor.execute(sql, (
+                    symbol,
+                    comment.id,
+                    sentiments[symbol]["sentiment"],
+                ))
+            self.connection.commit()
+        except Exception as exp:
+            self.connection.rollback()
+            print(f"Error inserting mentions for comment {comment.id}: {exp}") 
+
+
+    def get_sentiments(self, comment: praw.reddit.Comment) -> dict:
+        sentiments = {}
+        sentences = nlp.get_sentences(comment.body)
+        for sentence in sentences:
+            for noun_phrase in sentence.noun_phrases:
+                upper = noun_phrase.upper()
+                if upper in self.symbols:
+                    if upper not in sentiments:
+                        sentiments[upper] = {
+                            "mentions": 1,
+                            "sentiment": sentence.sentiment.polarity
+                        }
+                    else:
+                        sentiments[upper] = {
+                            "mentions": sentiments[upper]["mentions"] + 1,
+                            "sentiment": (sentiments[upper]["sentiment"] * sentiments[upper]["mentions"] + sentence.sentiment.polarity) / (sentiments[upper]["mentions"] + 1)
+                        }
+        return sentiments
 
 
     def stream_comments(self) -> None:
@@ -137,7 +214,7 @@ class RedditScraper:
                 self.save_comment(comment)
 
 
-def main() -> None:
+def main():
     user_agent = f"script:{cfg.NAME}:{cfg.VERSION} (by /u/{cfg.REDDIT_USERNAME})" # <platform>:<app ID>:<version string> (by /u/<reddit username>)
     print(f"Starting RedditScraper as {user_agent}.")
     scraper = RedditScraper(
@@ -152,6 +229,7 @@ def main() -> None:
         database_user = cfg.DATABASE_USER,
         database_password = cfg.DATABASE_PASSWORD
     )
+    scraper.get_symbols()
 
     while True:
         try:
