@@ -1,0 +1,20 @@
+# Git
+.gitignore
+
+# Cache
+__pycache__/
+
+# Virtualenv
+venv/
+
+# Environment Configuration
+*.env
+
+# Output Files
+*.json
+*.out
+
+# Reference files
+reference/
+queries/
+gittut.txt

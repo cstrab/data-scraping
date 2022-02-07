@@ -1,4 +1,3 @@
-from typing import Text
 from textblob import TextBlob
 
 
