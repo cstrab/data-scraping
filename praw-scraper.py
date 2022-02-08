@@ -61,9 +61,10 @@ class RedditScraper:
         
         try:
             symbols = []
-            # sql = "SELECT symbol FROM symbols;"
-            sql = """SELECT * FROM public.symbols WHERE LENGTH(symbol) > 2
-            AND listing_exchange IN ('Q', 'N')"""
+            sql = """SELECT symbol FROM symbols
+            WHERE listing_exchange IN ('Q', 'N');"""
+            # sql = """SELECT * FROM public.symbols WHERE LENGTH(symbol) > 2
+            # AND listing_exchange IN ('Q', 'N')"""
             self.cursor.execute(sql)
             results = self.cursor.fetchall()
             symbols = {result[0]: True for result in results}
