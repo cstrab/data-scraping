@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 import psycopg2
 
@@ -21,7 +21,9 @@ print(f"Connected to {cfg.DATABASE_NAME} as {cfg.DATABASE_USER}.")
 
 @app.route('/api/mentions')
 def hello_world():
-    data = get_mentions(60, 20)
+    minutes = int(request.args.get('minutes')) if request.args.get('minutes') is not None else 60
+    limit = int(request.args.get('limit')) if request.args.get('limit') is not None else 20
+    data = get_mentions(minutes, limit)
     if data is None:
         return "Failed to get mentions.", 500
     return jsonify(data)
