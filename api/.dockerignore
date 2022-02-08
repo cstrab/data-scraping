@@ -1,8 +1,11 @@
+# Git
+.gitignore
+
 # Cache
-/__pycache__
+__pycache__/
 
 # Virtualenv
-/venv
+venv/
 
 # Environment Configuration
-.env
+*.env
