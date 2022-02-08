@@ -60,7 +60,6 @@ class RedditScraper:
             return self.fetch_symbols()
         
         try:
-            symbols = []
             sql = """SELECT symbol FROM symbols
             WHERE listing_exchange IN ('Q', 'N');"""
             # sql = """SELECT * FROM public.symbols WHERE LENGTH(symbol) > 2
@@ -236,6 +235,7 @@ def main():
         try:
             scraper.stream_comments()
         except Exception as exp:
+            # Usually caused by 503 from Reddit api
             print(f"Error streaming comments: {exp}")
             print(f"Retrying in {cfg.RETRY_SECONDS} seconds...")
             time.sleep(cfg.RETRY_SECONDS)
