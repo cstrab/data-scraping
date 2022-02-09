@@ -205,13 +205,11 @@ function App() {
         <>
           <p>Live Comments:</p>
           <input type={"checkbox"} value={liveComments} onChange={onLiveCommentsChanged}/>
-          { comments.map(c => <>
-            <div key={`comment${c.id}`}>
-              <p><b>{c.author}</b> at {c.created} - {new Date(c.created*1000).toLocaleTimeString()} on {new Date(c.created*1000).toLocaleDateString()}</p>
-              <p><i>{c.sentiment.toFixed(2)}</i></p>
-              <p>{c.body}</p>
-            </div>
-          </>)}
+          { comments.map(c => <div key={`comment${c.id}`}>
+            <p><b>{c.author}</b> at {new Date(c.created*1000).toLocaleTimeString()} on {new Date(c.created*1000).toLocaleDateString()}</p>
+            <p><i>{c.sentiment.toFixed(2)}</i></p>
+            <p>{c.body}</p>
+          </div>)}
         </>
         }
       </div>

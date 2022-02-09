@@ -67,7 +67,6 @@ def query_mentions(minutes: int, limit: int):
 @app.route('/api/symbols/<symbol>/comments')
 def get_comments(symbol):
     minutes = int(request.args.get('minutes')) if request.args.get('minutes') is not None else 60
-    print(minutes)
     data = query_comments(symbol, minutes)
     if data is None:
         return "Failed to get comments.", 500
@@ -76,7 +75,7 @@ def get_comments(symbol):
 
 def query_comments(symbol: str, minutes: int):
     if cfg.DEBUG:
-        print("Getting comments...")
+        print(f"Getting comments for {symbol} since {minutes} minutes...")
     
     try:
         sql = """SELECT cmt.*, COUNT(sym.symbol) AS count, AVG(mnt.sentiment) AS sentiment 
