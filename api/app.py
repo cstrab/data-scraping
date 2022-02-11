@@ -111,4 +111,4 @@ def query_comments(symbol: str, minutes: int):
 
 
 if __name__ == "__main__":
-    app.run()
+    app.run(host="0.0.0.0")
