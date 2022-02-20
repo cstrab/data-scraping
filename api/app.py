@@ -48,18 +48,18 @@ def query_mentions(minutes: int, limit: int):
         ) AS sent
         ORDER BY sent.count DESC, sent.sentiment DESC
         LIMIT %s;"""
-        cursor = connection.cursor()
-        cursor.execute(sql, (minutes, limit,))
-        results = cursor.fetchall()
-        mentions = [
-            {
-                "symbol": result[0],
-                "count": result[1],
-                "sentiment": float(result[2])
-            }
-            for result in results
-        ]
-        return mentions
+        with connection.cursor("query_mentions") as cursor:
+            cursor.execute(sql, (minutes, limit,))
+            results = cursor.fetchall()
+            mentions = [
+                {
+                    "symbol": result[0],
+                    "count": result[1],
+                    "sentiment": float(result[2])
+                }
+                for result in results
+            ]
+            return mentions
     except Exception as exp:
         print(f"Error getting mentions: {exp}")
 
@@ -90,22 +90,22 @@ def query_comments(symbol: str, minutes: int):
         )
         GROUP BY cmt.id
         ORDER BY cmt.created DESC;"""
-        cursor = connection.cursor()
-        cursor.execute(sql, (symbol, minutes,))
-        results = cursor.fetchall()
-        mentions = [
-            {
-                "id": result[0],
-                "submission_id": result[1],
-                "body": result[2],
-                "author": result[3],
-                "created": int(result[4]),
-                "count": int(result[5]),
-                "sentiment": float(result[6]),
-            }
-            for result in results
-        ]
-        return mentions
+        with connection.cursor("query_comments") as cursor:
+            cursor.execute(sql, (symbol, minutes,))
+            results = cursor.fetchall()
+            mentions = [
+                {
+                    "id": result[0],
+                    "submission_id": result[1],
+                    "body": result[2],
+                    "author": result[3],
+                    "created": int(result[4]),
+                    "count": int(result[5]),
+                    "sentiment": float(result[6]),
+                }
+                for result in results
+            ]
+            return mentions
     except Exception as exp:
         print(f"Error getting comments: {exp}")
 
