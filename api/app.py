@@ -48,6 +48,7 @@ def query_mentions(minutes: int, limit: int):
         ) AS sent
         ORDER BY sent.count DESC, sent.sentiment DESC
         LIMIT %s;"""
+        # Would it be best practice to also do this with the connection?
         with connection.cursor("query_mentions") as cursor:
             cursor.execute(sql, (minutes, limit,))
             results = cursor.fetchall()
