@@ -55,6 +55,7 @@ def query_mentions(minutes: int, limit: int):
             WHERE cmt.created > (
                 SELECT EXTRACT(epoch FROM (current_timestamp - (%s || ' minutes')::interval))
             )
+            AND sym.active
             GROUP BY sym.symbol
         ) AS sent
         ORDER BY sent.count DESC, sent.sentiment DESC
