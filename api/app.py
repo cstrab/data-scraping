@@ -5,18 +5,29 @@ import psycopg2
 import config as cfg
 
 
+def checkDbConnection(db_conn):
+    try:
+        with psycopg2.connect(**db_conn) as connection:
+            with connection.cursor("test_connection") as cursor:
+                cursor.execute("SELECT 1")
+                print(f"Connected to {db_conn['database']} as {db_conn['user']}.")
+    except Exception as exp:
+        print(f"Failed to connect to {db_conn['database']}: {exp}")
+
+
+db_conn = {
+    "database": cfg.DATABASE_NAME,
+    "user": cfg.DATABASE_USER,
+    "password": cfg.DATABASE_PASSWORD,
+    "host": cfg.DATABASE_HOST,
+    "port": cfg.DATABASE_PORT
+}
+
+checkDbConnection(db_conn)
+
+
 app = Flask(__name__)
 cors = CORS(app, resources={r"/api/*": {"origins": "http://localhost:3000"}})
-
-connection = psycopg2.connect(
-    database=cfg.DATABASE_NAME,
-    user=cfg.DATABASE_USER,
-    password=cfg.DATABASE_PASSWORD,
-    host=cfg.DATABASE_HOST,
-    port=cfg.DATABASE_PORT
-)
-# cursor = connection.cursor()
-print(f"Connected to {cfg.DATABASE_NAME} as {cfg.DATABASE_USER}.")
 
 
 @app.route('/api/mentions')
@@ -49,18 +60,19 @@ def query_mentions(minutes: int, limit: int):
         ORDER BY sent.count DESC, sent.sentiment DESC
         LIMIT %s;"""
         # Would it be best practice to also do this with the connection?
-        with connection.cursor("query_mentions") as cursor:
-            cursor.execute(sql, (minutes, limit,))
-            results = cursor.fetchall()
-            mentions = [
-                {
-                    "symbol": result[0],
-                    "count": result[1],
-                    "sentiment": float(result[2])
-                }
-                for result in results
-            ]
-            return mentions
+        with psycopg2.connect(**db_conn) as connection:
+            with connection.cursor("query_mentions") as cursor:
+                cursor.execute(sql, (minutes, limit,))
+                results = cursor.fetchall()
+                mentions = [
+                    {
+                        "symbol": result[0],
+                        "count": result[1],
+                        "sentiment": float(result[2])
+                    }
+                    for result in results
+                ]
+                return mentions
     except Exception as exp:
         print(f"Error getting mentions: {exp}")
 
@@ -91,22 +103,23 @@ def query_comments(symbol: str, minutes: int):
         )
         GROUP BY cmt.id
         ORDER BY cmt.created DESC;"""
-        with connection.cursor("query_comments") as cursor:
-            cursor.execute(sql, (symbol, minutes,))
-            results = cursor.fetchall()
-            mentions = [
-                {
-                    "id": result[0],
-                    "submission_id": result[1],
-                    "body": result[2],
-                    "author": result[3],
-                    "created": int(result[4]),
-                    "count": int(result[5]),
-                    "sentiment": float(result[6]),
-                }
-                for result in results
-            ]
-            return mentions
+        with psycopg2.connect(**db_conn) as connection:
+            with connection.cursor("query_comments") as cursor:
+                cursor.execute(sql, (symbol, minutes,))
+                results = cursor.fetchall()
+                mentions = [
+                    {
+                        "id": result[0],
+                        "submission_id": result[1],
+                        "body": result[2],
+                        "author": result[3],
+                        "created": int(result[4]),
+                        "count": int(result[5]),
+                        "sentiment": float(result[6]),
+                    }
+                    for result in results
+                ]
+                return mentions
     except Exception as exp:
         print(f"Error getting comments: {exp}")
 
