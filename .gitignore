@@ -5,6 +5,7 @@
 
 # Virtualenv
 /venv
+*/stocks-api-venv
 
 # Environment Configuration
 .env
