@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Query, Body
 from datetime import datetime
-from lib import stock_connect
+from lib import stock_repo
 
 description = 'Stock API allows the user to download data directly from the Stocks SQL database'
 
@@ -11,14 +11,14 @@ app = FastAPI(
 )
 
 @app.get('/stocks')
-async def stocks_df(
-                    start: datetime,
+async def stocks_df(start: datetime,
                     end: datetime):
 
-    df = stock_connect.get_stock_data(start,end)
+    df = stock_repo.get_stock_data(start,end)
+    print(df)
 
     if type(df) != str:
-        json = df.to_json(date_format='iso', orient='table')
+        json = df.to_json(date_format='iso',orient='records')
         return json
     else:
         return df

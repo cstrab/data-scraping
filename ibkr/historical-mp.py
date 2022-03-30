@@ -26,8 +26,9 @@ def main():
         )
 
         df = util.df(bars)
-        engine = create_engine('postgresql://user_1:test123@192.168.1.217:5432/stocks_db')
-        df.to_sql(stocktik, engine, if_exists='append')
+        print(df)
+        # engine = create_engine('postgresql://user_1:test123@192.168.1.217:5432/stocks_db')
+        # df.to_sql(stocktik, engine, if_exists='append')
         start = start - timedelta(days=pullfreq)
 
 if __name__ == '__main__':

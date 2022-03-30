@@ -15,7 +15,7 @@ def main():
                 'HISTORICAL_VOLATILITY',
                 'OPTION_IMPLIED_VOLATILITY',
                 ]
-    pullfreq = 1
+    pullfreq = 5
     pullfreqstr = str(pullfreq) + " D"
     start = datetime.now()
 
@@ -31,8 +31,8 @@ def main():
             useRTH=True
         )
         df = util.df(bars)
-        engine = create_engine('postgresql://user_1:test123@192.168.1.217:5432/stocks_db')
-        df.to_sql('TEST_'+str(type), engine, if_exists='replace')
+        # engine = create_engine('postgresql://user_1:test123@192.168.1.217:5432/stocks_db')
+        # df.to_sql('TEST_'+str(type), engine, if_exists='replace')
         print(type)
         # ib.sleep(10)
 
