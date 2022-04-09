@@ -7,13 +7,11 @@ load_dotenv() # Loads variables from .env file into environment
 DEBUG=False
 NAME="big.data.boys"
 VERSION="0.0.1"
-REDDIT_USERNAME="cheeebz"
-# CLIENT_ID="QpA5EiFQsqYoj2nbkqrObQ" # for streaming
-CLIENT_ID="i7jkVr6-TGnrQVdZ7WHgIQ" # for reverse streaming
+REDDIT_USERNAME=os.environ.get("REDDIT_USERNAME") or "cheeebz"
+CLIENT_ID=os.environ.get("CLIENT_ID") or "i7jkVr6-TGnrQVdZ7WHgIQ"
 CLIENT_SECRET=os.environ.get("CLIENT_SECRET")
-SUBREDDIT="wallstreetbets"
-RETRY_SECONDS=30
-# DUMP_JSON=False
+SUBREDDIT=os.environ.get("SUBREDDIT") or "wallstreetbets"
+RETRY_SECONDS=os.environ.get("RETRY_SECONDS") or 30
 
 DATABASE_HOST=os.environ.get("DATABASE_HOST")
 DATABASE_PORT=os.environ.get("DATABASE_PORT")
