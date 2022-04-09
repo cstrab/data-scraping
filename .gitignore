@@ -9,3 +9,7 @@
 
 # Environment Configuration
 *.env
+
+# Archives
+*.zip
+*.tar.gz

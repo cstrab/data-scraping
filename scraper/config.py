@@ -4,11 +4,12 @@ from dotenv import load_dotenv
 
 load_dotenv() # Loads variables from .env file into environment
 
-DEBUG=False
+DEBUG=True
 NAME="big.data.boys"
 VERSION="0.0.1"
 REDDIT_USERNAME="cheeebz"
-CLIENT_ID="QpA5EiFQsqYoj2nbkqrObQ"
+# CLIENT_ID="QpA5EiFQsqYoj2nbkqrObQ" # for streaming
+CLIENT_ID="i7jkVr6-TGnrQVdZ7WHgIQ" # for reverse streaming
 CLIENT_SECRET=os.environ.get("CLIENT_SECRET")
 SUBREDDIT="wallstreetbets"
 RETRY_SECONDS=30

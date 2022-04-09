@@ -21,13 +21,17 @@ def main():
         database_password = cfg.DATABASE_PASSWORD
     )
     scraper.get_symbols()
+    scraper.get_before_time()
 
     while True:
         try:
-            scraper.stream_comments()
+            num_scraped = scraper.reverse_scrape_comments()
+            if num_scraped == 0:
+                print("No more comments scraped, stopping...")
+                break
         except Exception as exp:
             # Usually caused by 503 from Reddit api
-            print(f"Error streaming comments: {exp}")
+            print(f"Error scraping comments: {exp}")
             print(f"Retrying in {cfg.RETRY_SECONDS} seconds...")
             time.sleep(cfg.RETRY_SECONDS)
 
