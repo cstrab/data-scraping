@@ -50,12 +50,10 @@ def query_mentions(minutes: int, limit: int):
             FROM public.symbols sym
             INNER JOIN public.mentions AS mnt
             ON sym.symbol = mnt.symbol
-            INNER JOIN public.comments AS cmt
+            INNER JOIN (
+                SELECT * FROM getCommentsSinceSeconds(%s)
+            ) AS cmt
             ON cmt.id = mnt.comment_id
-            WHERE cmt.created > (
-                SELECT EXTRACT(epoch FROM (current_timestamp - (%s || ' minutes')::interval))
-            )
-            AND sym.active
             GROUP BY sym.symbol
         ) AS sent
         ORDER BY sent.count DESC, sent.sentiment DESC
@@ -63,7 +61,7 @@ def query_mentions(minutes: int, limit: int):
         # Would it be best practice to also do this with the connection?
         with psycopg2.connect(**db_conn) as connection:
             with connection.cursor("query_mentions") as cursor:
-                cursor.execute(sql, (minutes, limit,))
+                cursor.execute(sql, (minutes * 60, limit,))
                 results = cursor.fetchall()
                 mentions = [
                     {
@@ -93,20 +91,17 @@ def query_comments(symbol: str, minutes: int):
     
     try:
         sql = """SELECT cmt.*, COUNT(sym.symbol) AS count, AVG(mnt.sentiment) AS sentiment 
-        FROM public.comments cmt
+        FROM getCommentsSinceSeconds(%s) cmt
         INNER JOIN public.mentions AS mnt
         ON cmt.id = mnt.comment_id
         INNER JOIN public.symbols AS sym
         ON sym.symbol = mnt.symbol
-        WHERE sym.symbol = %s
-        AND cmt.created > (
-            SELECT EXTRACT(epoch FROM (current_timestamp - (%s || ' minutes')::interval))
-        )
-        GROUP BY cmt.id
+        WHERE sym.symbol =  %s
+        GROUP BY cmt.id, cmt.body, cmt.created, cmt.author, cmt.submission_id
         ORDER BY cmt.created DESC;"""
         with psycopg2.connect(**db_conn) as connection:
             with connection.cursor("query_comments") as cursor:
-                cursor.execute(sql, (symbol, minutes,))
+                cursor.execute(sql, (minutes * 60, symbol,))
                 results = cursor.fetchall()
                 mentions = [
                     {
