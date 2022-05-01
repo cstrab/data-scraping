@@ -7,6 +7,7 @@ SELECT * FROM (
 		SELECT * FROM getCommentsSinceSeconds(300)
     ) AS cmt
 	ON cmt.id = mnt.comment_id
+	WHERE sym.active
 	GROUP BY sym.symbol
 ) AS sent
 ORDER BY sent.count DESC, sent.sentiment DESC;

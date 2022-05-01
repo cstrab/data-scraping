@@ -54,6 +54,7 @@ def query_mentions(minutes: int, limit: int):
                 SELECT * FROM getCommentsSinceSeconds(%s)
             ) AS cmt
             ON cmt.id = mnt.comment_id
+	        WHERE sym.active
             GROUP BY sym.symbol
         ) AS sent
         ORDER BY sent.count DESC, sent.sentiment DESC
