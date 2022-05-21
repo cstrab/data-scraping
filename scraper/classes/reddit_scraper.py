@@ -39,6 +39,17 @@ class RedditScraper:
         # pushshift api for historical scraping
         self.psapi = psaw.PushshiftAPI(self.reddit)
 
+        # TODO: Ping db and set connection string
+        # "host=localhost port=5432 dbname=test user=postgres password=secret"
+        # OR
+        # db_conn = {
+        #     "database": cfg.DATABASE_NAME,
+        #     "user": cfg.DATABASE_USER,
+        #     "password": cfg.DATABASE_PASSWORD,
+        #     "host": cfg.DATABASE_HOST,
+        #     "port": cfg.DATABASE_PORT
+        # }
+        # TODO: Create a method to get db cursor
         if database_host:
             self.connection = psycopg2.connect(
                 database=database_name,
