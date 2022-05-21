@@ -1,3 +1,4 @@
+from typing import Dict
 import praw
 import psaw
 import psycopg2
@@ -10,8 +11,7 @@ class RedditScraper:
     reddit: praw.reddit.Reddit
     subreddit: praw.reddit.Subreddit
     psapi: psaw.PushshiftAPI
-    connection = None
-    cursor = None
+    db_conn: dict
     debug: bool
     symbols = []
     before_time = 0
@@ -39,49 +39,53 @@ class RedditScraper:
         # pushshift api for historical scraping
         self.psapi = psaw.PushshiftAPI(self.reddit)
 
-        # TODO: Ping db and set connection string
-        # "host=localhost port=5432 dbname=test user=postgres password=secret"
-        # OR
-        # db_conn = {
-        #     "database": cfg.DATABASE_NAME,
-        #     "user": cfg.DATABASE_USER,
-        #     "password": cfg.DATABASE_PASSWORD,
-        #     "host": cfg.DATABASE_HOST,
-        #     "port": cfg.DATABASE_PORT
-        # }
-        # TODO: Create a method to get db cursor
         if database_host:
-            self.connection = psycopg2.connect(
-                database=database_name,
-                user=database_user,
-                password=database_password,
-                host=database_host,
-                port=database_port
-            )
-            self.cursor = self.connection.cursor()
-            print(f"Connected to {database_name} as {database_user}.")
+            self.db_conn = {
+                "database": database_name,
+                "user": database_user,
+                "password": database_password,
+                "host": database_host,
+                "port": database_port
+            }
+            self.check_db_connection()
         else:
             print("No database config provided. Results will not be saved.")
 
         self.debug = debug
 
 
+    def get_db_connection(self):
+        return psycopg2.connect(**self.db_conn)
+
+
+    def check_db_connection(self):
+        try:
+            with self.get_db_connection() as connection:
+                with connection.cursor() as cursor:
+                    cursor.execute("SELECT 1")
+                    print(f"Connected to {self.db_conn['database']} as {self.db_conn['user']}.")
+        except Exception as exp:
+            print(f"Failed to connect to {self.db_conn['database']}: {exp}")
+
+
     def get_symbols(self):
         if self.debug:
             print("Getting symbols...")
 
-        if not self.connection:
+        if not self.db_conn:
             return self.fetch_symbols()
         
-        try:
-            sql = """SELECT symbol FROM symbols
-            WHERE listing_exchange IN ('Q', 'N');"""
-            self.cursor.execute(sql)
-            results = self.cursor.fetchall()
-            symbols = {result[0]: True for result in results}
-            self.symbols = symbols
-        except Exception as exp:
-            print(f"Error getting symbols: {exp}")
+        with self.get_db_connection() as connection:
+            with connection.cursor() as cursor:
+                try:
+                    sql = """SELECT symbol FROM symbols
+                    WHERE listing_exchange IN ('Q', 'N');"""
+                    cursor.execute(sql)
+                    results = cursor.fetchall()
+                    symbols = {result[0]: True for result in results}
+                    self.symbols = symbols
+                except Exception as exp:
+                    print(f"Error getting symbols: {exp}")
     
 
     def fetch_symbols(self):
@@ -90,55 +94,61 @@ class RedditScraper:
 
 
     def submission_exists(self, submission: praw.reddit.Submission) -> bool:
-        if not self.connection:
+        if not self.db_conn:
             return False
 
-        try:
-            sql = "SELECT 1 FROM submissions WHERE id = %s;"
-            self.cursor.execute(sql, (submission.id,))
-            result = self.cursor.fetchone()
-            exists = result is not None
-            return exists
-        except Exception as exp:
-            print(f"Error checking for submission {submission.id}: {exp}")
-            return False
+        with self.get_db_connection() as connection:
+            with connection.cursor() as cursor:
+                try:
+                    sql = "SELECT 1 FROM submissions WHERE id = %s;"
+                    cursor.execute(sql, (submission.id,))
+                    result = cursor.fetchone()
+                    exists = result is not None
+                    return exists
+                except Exception as exp:
+                    print(f"Error checking for submission {submission.id}: {exp}")
+                    return False
 
 
     def save_submission(self, submission: praw.reddit.Submission) -> None:
         if self.debug:
             print(f"Saving submission {submission.id}...")
 
-        if not self.connection:
+        if not self.db_conn:
             return False
             
-        try:
-            sql = """INSERT INTO submissions (id, title, author, created) 
-            VALUES (%s, %s, %s, %s);"""
-            self.cursor.execute(sql, (
-                submission.id,
-                submission.title,
-                submission.author.name if submission.author else "",
-                int(submission.created),
-            ))
-            self.connection.commit()
-        except Exception as exp:
-            self.connection.rollback()
-            print(f"Error saving submission {submission.id}: {exp}")
+        with self.get_db_connection() as connection:
+            with connection.cursor() as cursor:
+                try:
+                    sql = """INSERT INTO submissions (id, title, author, created) 
+                    VALUES (%s, %s, %s, %s);"""
+                    cursor.execute(sql, (
+                        submission.id,
+                        submission.title,
+                        submission.author.name if submission.author else "",
+                        int(submission.created),
+                    ))
+                    connection.commit()
+                except Exception as exp:
+                    connection.rollback()
+                    print(f"Error saving submission {submission.id}: {exp}")
    
 
     def comment_exists(self, comment: praw.reddit.Comment) -> bool:
-        if not self.connection:
+        if not self.db_conn:
             return False
 
-        try:
-            sql = "SELECT 1 FROM comments WHERE id = %s;"
-            self.cursor.execute(sql, (comment.id,))
-            result = self.cursor.fetchone()
-            exists = result is not None
-            return exists
-        except Exception as exp:
-            print(f"Error checking for comment {comment.id}: {exp}")
-            return False
+        with self.get_db_connection() as connection:
+            with connection.cursor() as cursor:
+                try:
+                    sql = "SELECT 1 FROM comments WHERE id = %s;"
+                    cursor.execute(sql, (comment.id,))
+                    result = cursor.fetchone()
+                    exists = result is not None
+                    return exists
+                except Exception as exp:
+                    print(f"Error checking for comment {comment.id}: {exp}")
+                    return False
 
 
     def save_comment(self, comment: praw.reddit.Comment) -> None:
@@ -150,23 +160,25 @@ class RedditScraper:
 
 
     def insert_comment(self, comment: praw.reddit.Comment) -> None:
-        if not self.connection:
+        if not self.db_conn:
             return
         
-        try:
-            sql = """INSERT INTO comments (id, submission_id, body, author, created) 
-            VALUES (%s, %s, %s, %s, %s);"""
-            self.cursor.execute(sql, (
-                comment.id,
-                comment.submission.id,
-                comment.body,
-                comment.author.name if comment.author else "",
-                int(comment.created),
-            ))
-            self.connection.commit()
-        except Exception as exp:
-            self.connection.rollback()
-            print(f"Error inserting comment {comment.id}: {exp}")
+        with self.get_db_connection() as connection:
+            with connection.cursor() as cursor:
+                try:
+                    sql = """INSERT INTO comments (id, submission_id, body, author, created) 
+                    VALUES (%s, %s, %s, %s, %s);"""
+                    cursor.execute(sql, (
+                        comment.id,
+                        comment.submission.id,
+                        comment.body,
+                        comment.author.name if comment.author else "",
+                        int(comment.created),
+                    ))
+                    connection.commit()
+                except Exception as exp:
+                    connection.rollback()
+                    print(f"Error inserting comment {comment.id}: {exp}")
 
         
     def analyze_comment(self, comment: praw.reddit.Comment):
@@ -175,22 +187,24 @@ class RedditScraper:
             for symbol in sentiments:
                 print(f"{symbol} mentioned in {comment.id} with sentiment {sentiments[symbol]['sentiment']}.")
         
-        if not self.connection:
+        if not self.db_conn:
             return
         
-        try:
-            sql = """INSERT INTO mentions (symbol, comment_id, sentiment) 
-            VALUES (%s, %s, %s);"""
-            for symbol in sentiments:
-                self.cursor.execute(sql, (
-                    symbol,
-                    comment.id,
-                    sentiments[symbol]["sentiment"],
-                ))
-            self.connection.commit()
-        except Exception as exp:
-            self.connection.rollback()
-            print(f"Error inserting mentions for comment {comment.id}: {exp}") 
+        with self.get_db_connection() as connection:
+            with connection.cursor() as cursor:
+                try:
+                    sql = """INSERT INTO mentions (symbol, comment_id, sentiment) 
+                    VALUES (%s, %s, %s);"""
+                    for symbol in sentiments:
+                        cursor.execute(sql, (
+                            symbol,
+                            comment.id,
+                            sentiments[symbol]["sentiment"],
+                        ))
+                    connection.commit()
+                except Exception as exp:
+                    connection.rollback()
+                    print(f"Error inserting mentions for comment {comment.id}: {exp}") 
 
 
     def get_sentiments(self, comment: praw.reddit.Comment) -> dict:
@@ -253,15 +267,17 @@ class RedditScraper:
 
 
     def get_before_time(self) -> str:
-        if not self.connection:
+        if not self.db_conn:
             return False
 
-        try:
-            sql = """SELECT created FROM comments
-            ORDER BY created
-            LIMIT 1"""
-            self.cursor.execute(sql)
-            result = self.cursor.fetchone()
-            self.before_time = result[0]
-        except Exception as exp:
-            print(f"Error getting oldest comment time: {exp}")
+        with self.get_db_connection() as connection:
+            with connection.cursor() as cursor:
+                try:
+                    sql = """SELECT created FROM comments
+                    ORDER BY created
+                    LIMIT 1"""
+                    cursor.execute(sql)
+                    result = cursor.fetchone()
+                    self.before_time = result[0]
+                except Exception as exp:
+                    print(f"Error getting oldest comment time: {exp}")
